@@ -46,6 +46,28 @@
 /* Exported constants --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
 /* Exported define -----------------------------------------------------------*/
+
+#define CUSTOM_HID
+
+#ifdef CUSTOM_HID
+#define wMaxPacketSize                          0x40
+
+#define USB_DEVICE_DESCRIPTOR_TYPE              0x01
+#define USB_CONFIGURATION_DESCRIPTOR_TYPE       0x02
+#define USB_STRING_DESCRIPTOR_TYPE              0x03
+#define USB_INTERFACE_DESCRIPTOR_TYPE           0x04
+#define USB_ENDPOINT_DESCRIPTOR_TYPE            0x05
+
+#define HID_DESCRIPTOR_TYPE                     0x21
+#define JOYSTICK_SIZ_HID_DESC                  0x09
+#define JOYSTICK_OFF_HID_DESC                  0x12
+
+#define JOYSTICK_SIZ_DEVICE_DESC               18
+#define JOYSTICK_SIZ_CONFIG_DESC               41
+#define JOYSTICK_SIZ_REPORT_DESC               23//157//163
+
+#else
+
 #define USB_DEVICE_DESCRIPTOR_TYPE              0x01
 #define USB_CONFIGURATION_DESCRIPTOR_TYPE       0x02
 #define USB_STRING_DESCRIPTOR_TYPE              0x03
@@ -59,10 +81,13 @@
 #define JOYSTICK_SIZ_DEVICE_DESC                18
 #define JOYSTICK_SIZ_CONFIG_DESC                34
 #define JOYSTICK_SIZ_REPORT_DESC                74
-#define JOYSTICK_SIZ_STRING_LANGID              4
-#define JOYSTICK_SIZ_STRING_VENDOR              38
-#define JOYSTICK_SIZ_STRING_PRODUCT             30
-#define JOYSTICK_SIZ_STRING_SERIAL              26
+#endif
+
+
+#define JOYSTICK_SIZ_STRING_LANGID             4
+#define JOYSTICK_SIZ_STRING_VENDOR             38
+#define JOYSTICK_SIZ_STRING_PRODUCT            28
+#define JOYSTICK_SIZ_STRING_SERIAL             26
 
 #define STANDARD_ENDPOINT_DESC_SIZE             0x09
 

@@ -1,10 +1,12 @@
 /**
   ******************************************************************************
-  * @file    hw_config.h
+  * @file    stm32_it.c
   * @author  MCD Application Team
   * @version V4.1.0
   * @date    26-May-2017
-  * @brief   Hardware Configuration & Setup
+  * @brief   Main Interrupt Service Routines.
+  *          This file provides template for all exceptions handler and peripherals
+  *          interrupt service routine.
   ******************************************************************************
   * @attention
   *
@@ -35,40 +37,29 @@
   ******************************************************************************
   */
 
+#ifndef __STM32_IT_H__
+#define __STM32_IT_H__
 
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __HW_CONFIG_H
-#define __HW_CONFIG_H
-
-/* Includes ------------------------------------------------------------------*/
-#include "platform_config.h"
-#include "usb_type.h"
-#include "usb_lib.h"
-#include "usb_desc.h"
-#include "usb_pwr.h"
 #include "usb_istr.h"
-/* Exported types ------------------------------------------------------------*/
-/* Exported constants --------------------------------------------------------*/
-/* Exported macro ------------------------------------------------------------*/
-/* Exported define -----------------------------------------------------------*/
-#define CURSOR_STEP     5
-#define DOWN            2
-#define LEFT            3
-#define RIGHT           4
-#define UP              5
 
-/* Exported functions ------------------------------------------------------- */
-void Set_System(void);
-void Set_USBClock(void);
-void GPIO_AINConfig(void);
-void Enter_LowPowerMode(void);
-void Leave_LowPowerMode(void);
-void USB_Interrupts_Config(void);
-void USB_Cable_Config (FunctionalState NewState);
-void Get_SerialNum(void);
+/**
+  * Function Name  : USB_IRQHandler
+  * Description    : This function handles USB Low Priority interrupts
+  *                  requests.
+  * Input          : None
+  * Output         : None
+  * Return         : None
+  */
+#if defined(STM32L1XX_MD) || defined(STM32L1XX_HD)|| defined(STM32L1XX_MD_PLUS) || defined(STM32F37X)
+void USB_LP_IRQHandler(void)
+#else
+void USB_LP_CAN1_RX0_IRQHandler(void)
+#endif
+{
+	USART1->DR = 'F';
+  USB_Istr();
+}
 
-void USB_HID_Mouse_Send(int8_t dx, int8_t dy);
-
-#endif  /*__HW_CONFIG_H*/
+#endif /* USE_STM3210E_EVAL */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

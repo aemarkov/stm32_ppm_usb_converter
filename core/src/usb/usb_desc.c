@@ -46,7 +46,105 @@
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
-/* USB Standard Device Descriptor */
+#ifdef CUSTOM_HID
+// USB Standard Device Descriptor 
+const uint8_t Joystick_DeviceDescriptor[JOYSTICK_SIZ_DEVICE_DESC] =
+{
+    0x12,                       //bLength 
+    USB_DEVICE_DESCRIPTOR_TYPE, //bDescriptorType
+    0x00, 0x02,                 //bcdUSB     
+
+    0x00,                       //bDeviceClass
+    0x00,                       //bDeviceSubClass
+    0x00,                       //bDeviceProtocol
+
+    0x40,                       //bMaxPacketSize40
+
+    0x83, 0x04,                 //idVendor (0x0483)
+    0x50, 0x57,                 //idProduct = 0x5750    
+    0x00, 0x02,                 //bcdDevice rel. 2.00    
+    1,                          //Index of string descriptor describing manufacturer 
+    2,                          //Index of string descriptor describing product
+    3,                          //Index of string descriptor describing the device serial number 
+    0x01                        //bNumConfigurations
+};
+
+
+// USB Configuration Descriptor 
+//   All Descriptors (Configuration, Interface, Endpoint, Class, Vendor 
+const uint8_t Joystick_ConfigDescriptor[JOYSTICK_SIZ_CONFIG_DESC] =
+{
+    0x09,         // bLength: Configuration Descriptor size 
+    USB_CONFIGURATION_DESCRIPTOR_TYPE, // bDescriptorType: Configuration 
+    JOYSTICK_SIZ_CONFIG_DESC, 0x00,   // wTotalLength: Bytes returned
+
+    0x01,         // bNumInterfaces: 1 interface 
+    0x01,         // bConfigurationValue: Configuration value 
+    0x00,         // iConfiguration: Index of string descriptor describing the configuration
+    0xE0,         // bmAttributes: USB-powered
+    0x32,         // MaxPower 100 mA: this current is used for detecting Vbus 
+
+        //************* Descriptor of Custom HID interface ***************
+        0x09,         // bLength: Interface Descriptor size 
+        USB_INTERFACE_DESCRIPTOR_TYPE,// bDescriptorType: Interface descriptor type 
+        0x00,         // bInterfaceNumber: Number of Interface 
+        0x00,         // bAlternateSetting: Alternate setting 
+        0x02,         // bNumEndpoints     
+        0x03,         // bInterfaceClass: HID 
+        0x00,         // bInterfaceSubClass : 1=BOOT, 0=no boot 
+        0x00,         // nInterfaceProtocol : 0=none, 1=keyboard, 2=mouse 
+        0,            // iInterface: Index of string descriptor 
+
+            //******************* Descriptor of Custom HID HID *******************
+            0x09,         // bLength: HID Descriptor size 
+            HID_DESCRIPTOR_TYPE, // bDescriptorType: HID 
+            0x10, 0x01,   // bcdHID: HID Class Spec release number             
+            0x00,         // bCountryCode: Hardware target country 
+            0x01,         // bNumDescriptors: Number of HID class report descriptors to follow 
+            0x22,         // bDescriptorType 
+            JOYSTICK_SIZ_REPORT_DESC,// wItemLength: Total length of Report descriptor 
+            0x00,
+
+            //******************* Descriptor of Custom HID endpoints *****************            
+            0x07,         // bLength: Endpoint Descriptor size 
+            USB_ENDPOINT_DESCRIPTOR_TYPE, // bDescriptorType: 
+
+            0x81,         // bEndpointAddress: Endpoint Address (IN) 
+            0x03,         // bmAttributes: Interrupt endpoint 
+            wMaxPacketSize,  // wMaxPacketSize
+            0x00,
+            0x20,         // bInterval: Polling Interval (32 ms)         
+        
+    0x07,   // bLength: Endpoint Descriptor size 
+    USB_ENDPOINT_DESCRIPTOR_TYPE,   // bDescriptorType: 
+            //  Endpoint descriptor type 
+    0x01,   // bEndpointAddress: 
+            //  Endpoint Address (OUT) 
+    0x03,   // bmAttributes: Interrupt endpoint 
+    wMaxPacketSize,
+    0x00,
+    0x20,   // bInterval: Polling Interval (20 ms) 
+};
+
+const uint8_t Joystick_ReportDescriptor[JOYSTICK_SIZ_REPORT_DESC] =
+{                    
+    0x06, 0xFF, 0x00,      // USAGE_PAGE (Vendor Page: 0xFF00)
+    0x09, 0x01,            // USAGE (Demo Kit)
+    0xa1, 0x01,            // COLLECTION (Application) 
+
+    // DECODED PPM
+    0x85, 0x01,            // REPORT_ID (1)
+    0x09, 0x01,            // USAGE (VENDOR 7)
+    0x15, 0x00,            // Logical minimum (0)
+    0x26, 0xff, 0x00,      // Logical maximum (255)
+    0x75, 0x08,            // Report Size (8 bits)
+    0x95, 10,              // Report Count
+    0x81, 0x82,            // INPUT (Data, Var, Abs, Vol)
+    
+     0xc0                  // END_COLLECTION
+};
+
+#else
 const uint8_t Joystick_DeviceDescriptor[JOYSTICK_SIZ_DEVICE_DESC] =
   {
     0x12,                       /*bLength */
@@ -212,6 +310,7 @@ const uint8_t Joystick_ReportDescriptor[JOYSTICK_SIZ_REPORT_DESC] =
     0xc0
   }
   ; /* Joystick_ReportDescriptor */
+#endif
 
 /* USB String Descriptors (optional) */
 const uint8_t Joystick_StringLangID[JOYSTICK_SIZ_STRING_LANGID] =
@@ -237,8 +336,8 @@ const uint8_t Joystick_StringProduct[JOYSTICK_SIZ_STRING_PRODUCT] =
   {
     JOYSTICK_SIZ_STRING_PRODUCT,          /* bLength */
     USB_STRING_DESCRIPTOR_TYPE,        /* bDescriptorType */
-    'S', 0, 'T', 0, 'M', 0, '3', 0, '2', 0, ' ', 0, 'J', 0,
-    'o', 0, 'y', 0, 's', 0, 't', 0, 'i', 0, 'c', 0, 'k', 0
+    'B', 0, 'O', 0, 'M', 0, 'J', 0, ' ', 0, 'J', 0, 'O', 0,
+    'Y', 0, 'S', 0, 'T', 0, 'I', 0, 'C', 0, 'K', 0
   };
 uint8_t Joystick_StringSerial[JOYSTICK_SIZ_STRING_SERIAL] =
   {

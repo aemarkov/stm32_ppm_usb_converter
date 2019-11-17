@@ -42,15 +42,17 @@
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
+#ifdef USB_LOW_PWR_MGMT_SUPPORT
 ErrorStatus HSEStartUpStatus;
 EXTI_InitTypeDef EXTI_InitStructure;
+#endif
 
 /* Extern variables ----------------------------------------------------------*/
 extern __IO uint8_t PrevXferComplete;
 
 /* Private function prototypes -----------------------------------------------*/
 static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
-static void Delay(__IO uint32_t nTime);
+//static void Delay(__IO uint32_t nTime);
 /* Private functions ---------------------------------------------------------*/
 
 /**
@@ -180,16 +182,6 @@ void Set_System(void)
   GPIO_Init(USB_DISCONNECT, &GPIO_InitStructure); 
  
 #endif
-#if ! defined(USE_NUCLEO)
-  /****************************************************/
-  /*  Configure the Joystick buttons in GPIO mode     */
-  /****************************************************/
-  
-  STM_EVAL_PBInit(Button_RIGHT, Mode_GPIO);
-  STM_EVAL_PBInit(Button_LEFT, Mode_GPIO);
-  STM_EVAL_PBInit(Button_UP, Mode_GPIO);
-  STM_EVAL_PBInit(Button_DOWN, Mode_GPIO);
-#endif /* USE_NUCLEO */  
 #ifdef USB_LOW_PWR_MGMT_SUPPORT
   
   /**********************************************************************/
@@ -204,36 +196,6 @@ void Set_System(void)
   EXTI_Init(&EXTI_InitStructure);
 
 #endif  /* USB_LOW_PWR_MGMT_SUPPORT */
-  
-#if defined (USE_NUCLEO)  
-  /****************************************************/
-  /*  Configure Key push-button for remote wakeup     */
-  /****************************************************/
-  
-  EXTI_InitTypeDef EXTI_InitStructure;
-  
-  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE);
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
-  
-  /* Connect Button EXTI Line to Button GPIO Pin */
-  SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC, EXTI_PinSource13);
-  
-  /* Configure Button EXTI line */
-  EXTI_InitStructure.EXTI_Line = EXTI_Line13;
-  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-  
-  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;  
-  
-  EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-  EXTI_Init(&EXTI_InitStructure);
-  
-  
-  EXTI_ClearITPendingBit(EXTI_Line13);
-#else
-  
-  STM_EVAL_PBInit(Button_KEY, Mode_EXTI);
-  EXTI_ClearITPendingBit(KEY_BUTTON_EXTI_LINE);
-#endif /* USE_NUCLEO */
 } 
  
 /**
@@ -354,13 +316,6 @@ void USB_Interrupts_Config(void)
 #endif /* USB_LOW_PWR_MGMT_SUPPORT */ 
   
 #endif
-#if !defined (USE_NUCLEO) 
-  
-  /* Enable the Key EXTI line Interrupt */
-  NVIC_InitStructure.NVIC_IRQChannel = KEY_BUTTON_EXTI_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-  NVIC_Init(&NVIC_InitStructure);
-#endif
 }
 
 /**
@@ -402,179 +357,7 @@ void USB_Cable_Config (FunctionalState NewState)
   {
     GPIO_SetBits(USB_DISCONNECT, USB_DISCONNECT_PIN);
   }
-#endif /* STM32L1XX_MD */
-}
-#if !defined (USE_NUCLEO)
-/**
-  * Function Name : JoyState.
-  * Description   : Decodes the Joystick direction.
-  * Input         : None.
-  * Output        : None.
-  * Return value  : The direction value.
-  */
-uint8_t JoyState(void)
-{
-   /* "right" key is pressed */
-#if !defined(USE_STM32373C_EVAL) && !defined(USE_STM32303C_EVAL)
-   if (!STM_EVAL_PBGetState(Button_RIGHT))
-#else
-     if (STM_EVAL_PBGetState(Button_RIGHT))
-#endif
-     {
-       return JOY_RIGHT;
-     }
-   /* "left" key is pressed */
-#if !defined(USE_STM32373C_EVAL) && !defined(USE_STM32303C_EVAL)
-   if (!STM_EVAL_PBGetState(Button_LEFT))
-#else
-     if (STM_EVAL_PBGetState(Button_LEFT))
-#endif
-     {
-       return JOY_LEFT;
-     }
-   /* "up" key is pressed */
-#if !defined(USE_STM32373C_EVAL) && !defined(USE_STM32303C_EVAL)
-   if (!STM_EVAL_PBGetState(Button_UP))    
-#else
-     if (STM_EVAL_PBGetState(Button_UP))    
-#endif
-     {
-       return JOY_UP;
-     }
-   /* "down" key is pressed */
-#if !defined(USE_STM32373C_EVAL) && !defined(USE_STM32303C_EVAL)
-   if (!STM_EVAL_PBGetState(Button_DOWN))    
-#else
-     if (STM_EVAL_PBGetState(Button_DOWN))
-#endif
-     {
-       return JOY_DOWN;
-     }
-   /* No key is pressed */
-     else
-     {
-       return 0;
-     } 
-}
-
-/**
-  * Function Name : Joystick_Send.
-  * Description   : prepares buffer to be sent containing Joystick event infos.
-  * Input         : Keys: keys received from terminal.
-  * Output        : None.
-  * Return value  : None.
-  */
-void Joystick_Send(uint8_t Keys)
-{
-  uint8_t Mouse_Buffer[4] = {0, 0, 0, 0};
-  int8_t X = 0, Y = 0;
-  
-      switch (Keys)
-  {
-    case JOY_LEFT:
-      X -= CURSOR_STEP;
-      break;
-    case JOY_RIGHT:
-
-      X += CURSOR_STEP;
-      break;
-    case JOY_UP:
-      Y -= CURSOR_STEP;
-      break;
-    case JOY_DOWN:
-      Y += CURSOR_STEP;
-      break;
-    default:
-      return;
-  }
-  /* prepare buffer to send */
-  Mouse_Buffer[1] = X;
-  Mouse_Buffer[2] = Y;
-  
-  /* Reset the control token to inform upper layer that a transfer is ongoing */
-  PrevXferComplete = 0;
-  
-  /* Copy mouse position info in ENDP1 Tx Packet Memory Area*/
-  USB_SIL_Write(EP1_IN, Mouse_Buffer, 4);
-  
-  /* Enable endpoint for transmission */
-  SetEPTxValid(ENDP1);
-
-}
-#endif /* USE_NUCLEO */
-/**
-  * Function Name  : Joy_Emul.
-  * Description    : Gets Pointer Data
-  * Input          : None.
-  * Output         : None.
-  * Return         : None.
-  */
-void Joy_Emul(void)
-{
-  uint8_t Mouse_Buffer[4] = {0, 0, 0, 0};
-  uint8_t X = 0, Y = 0; 
-  static uint8_t Sens = 0;
-  static uint8_t Step = 0;
-  
-  Delay(0x0FFFF);
-  
-  if (Step == 35)
-  {
-    Step = 0;
-    Sens++;
-  }
-  
-  if(Sens == 0)
-  {
-    X = Step++;
-    Y = 0;
-  }
-  
-  if(Sens == 1)
-  {
-    Y = Step++;
-    X = 0;
-  }      
-  if (Sens==2)
-  {
-    X = 256 - Step++;
-    Y = 0;
-  } 
-  
-  if (Sens == 3)
-  {
-    Y = 256 - Step++;
-    X = 0;
-  }
-  
-  if (Sens == 4)
-  { 
-    Sens = 0;
-    X = 0;
-    Y = 0;
-  }
-  
-  Mouse_Buffer[0] = 0;
-  Mouse_Buffer[1] = X;
-  Mouse_Buffer[2] = Y;
-  Mouse_Buffer[3] = 0;
-  
-  /* Reset the control token to inform upper layer that a transfer is ongoing */
-  PrevXferComplete = 0;
-  /* Copy mouse position info in ENDP1 Tx Packet Memory Area*/
-  USB_SIL_Write(EP1_IN, Mouse_Buffer, 4);
-  /* Enable endpoint for transmission */
-  SetEPTxValid(ENDP1);
-}
-
-/**
-  * @brief  Inserts a delay time.
-  * @param  nTime: specifies the delay time length, in milliseconds.
-  * @retval None
-  */
-static void Delay(__IO uint32_t nTime)
-{
-  for(; nTime != 0; nTime--);
+	#endif /* STM32L1XX_MD */
 }
 
 /**
@@ -627,6 +410,16 @@ static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len)
     
     pbuf[ 2* idx + 1] = 0;
   }
+}
+
+void USB_HID_Mouse_Send(int8_t dx, int8_t dy)
+{
+  uint8_t mouse_buffer[4] = {0};
+  mouse_buffer[1] = dx; // wtf
+  mouse_buffer[2] = dy; // wtf
+  PrevXferComplete = 0;
+  USB_SIL_Write(EP1_IN, mouse_buffer, 4);
+  SetEPTxValid(ENDP1);
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

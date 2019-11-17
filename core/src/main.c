@@ -6,9 +6,9 @@
 #include "stm32f10x_usart.h"            // Keil::Device:StdPeriph Drivers:USART
 
 #include <stdio.h>
-#include <stdbool.h>
 
 #include "main.h"
+#include "hw_config.h"
 
 #define PPM_SYNC_THRESHOLD 3000
 #define PPM_NUM_CHANNELS   10
@@ -23,7 +23,9 @@ uint16_t ppm_buffer[PPM_NUM_CHANNELS];
 uint8_t ppm_channel_index;
 ppm_decoder_state_t ppm_current_state;
 
+__IO uint8_t PrevXferComplete = 1;
 
+void usb_init(void);
 void gpio_init(void);
 void tim_init(void);
 void tim_process_event(void);
@@ -34,16 +36,29 @@ int main()
 	ppm_channel_index = 0;
 	ppm_current_state = PPM_STATE_START;
 	
+	
+	usb_init();
 	gpio_init();
-	tim_init();
+	//tim_init();
 	usart_init();
 	
   while(1) {
-		GPIOC->ODR ^= GPIO_Pin_15;
+		//GPIOC->ODR ^= GPIO_Pin_15;
+		if ((PrevXferComplete) && (bDeviceState == CONFIGURED)) {
+			USB_HID_Mouse_Send(1, 0);
+		}
 		//printf("Hello\n");
-		for(int i = 0; i < 1000000; i++);
+		//for(int i = 0; i < 1000000; i++);
 	}
 	return 0;
+}
+
+void usb_init(void)
+{
+	Set_System();
+  USB_Interrupts_Config();
+  Set_USBClock();
+  USB_Init();
 }
 
 
