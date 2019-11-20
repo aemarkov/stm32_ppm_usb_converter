@@ -42,12 +42,13 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usb_lib.h"
+#include "main.h"
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
 /* Exported define -----------------------------------------------------------*/
 
-#define wMaxPacketSize                         0x40
+#define wMaxPacketSize                         PPM_NUM_CHANNELS
 
 #define USB_STRING_DESCRIPTOR_TYPE             0x03
 
@@ -57,7 +58,7 @@
 
 #define JOYSTICK_SIZ_DEVICE_DESC               18
 #define JOYSTICK_SIZ_CONFIG_DESC               41
-#define JOYSTICK_SIZ_REPORT_DESC               22
+#define JOYSTICK_SIZ_REPORT_DESC               (23 + PPM_NUM_CHANNELS * 2) // PPM_NUM_CHANNELS * 2)
 
 #define JOYSTICK_SIZ_STRING_LANGID             4
 #define JOYSTICK_SIZ_STRING_VENDOR             38

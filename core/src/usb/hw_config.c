@@ -414,10 +414,10 @@ static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len)
 
 void USB_HID_Mouse_Send(int8_t dx, int8_t dy, int lmb)
 {
-  uint8_t mouse_buffer[1] = {0};
+  uint8_t mouse_buffer[4] = {0};
   mouse_buffer[0] = dx;
   PrevXferComplete = 0;
-  USB_SIL_Write(EP1_IN, mouse_buffer, 1);
+  USB_SIL_Write(EP1_IN, mouse_buffer, 4);
   SetEPTxValid(ENDP1);
 }
 

@@ -11,7 +11,6 @@
 #include "hw_config.h"
 
 #define PPM_SYNC_THRESHOLD 3000
-#define PPM_NUM_CHANNELS   10
 
 typedef enum ppm_decoder_state
 {
@@ -30,7 +29,10 @@ void gpio_init(void);
 void tim_init(void);
 void tim_process_event(void);
 void usart_init(void);
-	
+
+#define CH_CNT PPM_NUM_CHANNELS
+uint8_t values[CH_CNT] = { 0 };
+
 int main()
 {
 	ppm_channel_index = 0;
@@ -45,10 +47,17 @@ int main()
 	
   while(1) {
 		if(bDeviceState == CONFIGURED) {
-			for(int x = 0; x < 255; x++) {
-				while(!PrevXferComplete);
-				USB_HID_Mouse_Send(x, 0, 0);
+
+			for(int i = 0; i < CH_CNT; i++) {
+				values[i]+=5;
 			}
+
+			while(!PrevXferComplete);
+			PrevXferComplete = 0;
+			USB_SIL_Write(EP1_IN, values, CH_CNT);
+			SetEPTxValid(ENDP1);
+			GPIOC->ODR ^= GPIO_Pin_13;
+
 		}
 	}
 	return 0;

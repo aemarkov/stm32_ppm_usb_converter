@@ -111,9 +111,9 @@ const uint8_t Joystick_ConfigDescriptor[JOYSTICK_SIZ_CONFIG_DESC] =
 		0x05,                 // bDescriptorType: Endpoint descriptor type
 		0x81,                 // bEndpointAddress: Endpoint Address (IN) 
 		0x03,                 // bmAttributes: Interrupt endpoint 
-		0x04,                 // wMaxPacketSize
+		PPM_NUM_CHANNELS,     // wMaxPacketSize
 		0x00,
-		0x0A,                 // bInterval: Polling Interval (10 ms)
+		0x20,                 // bInterval: Polling Interval (10 ms)
     // Endpoint #2
     0x07,                 // bLength: Endpoint Descriptor size 
     0x05,                 // bDescriptorType: Endpoint descriptor type
@@ -129,14 +129,25 @@ const uint8_t Joystick_ReportDescriptor[JOYSTICK_SIZ_REPORT_DESC] =
     0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
     0x09, 0x05,                    // USAGE (Game Pad)
     0xa1, 0x01,                    // COLLECTION (Application)
-    0x05, 0x02,                    //   USAGE_PAGE (Simulation Controls)
-    0x09, 0xbb,                    //   USAGE (Throttle)
-    0x15, 0x00,                    //   LOGICAL_MINIMUM (0)
-    0x26, 0xff, 0x00,              //   LOGICAL_MAXIMUM (255)
-    0x75, 0x08,                    //   REPORT_SIZE (8)
-    0x95, 0x01,                    //   REPORT_COUNT (1)
-    0x81, 0x02,                    //   INPUT (Data,Var,Abs)
-    0xc0                           // END_COLLECTION 
+    0x09, 0x01,                    //   USAGE (Pointer)
+    0xa1, 0x00,                    //   COLLECTION (Physical)
+    0x09, 0x30,                    //     USAGE (X)
+    0x09, 0x31,                    //     USAGE (Y)
+    0x09, 0x32,                    //     USAGE (Z)
+    0x09, 0x33,                    //     USAGE (Rx)
+    0x09, 0x34,                    //     USAGE (Ry)
+    0x09, 0x35,                    //     USAGE (Rz)
+    0x09, 0x36,                    //     USAGE (SLIDER)
+    0x09, 0x36,                    //     USAGE (SLIDER)
+    0x09, 0x36,                    //     USAGE (SLIDER)
+    0x09, 0x36,                    //     USAGE (SLIDER)
+    0x15, 0x00,                    //     LOGICAL_MINIMUM (0)
+    0x26, 0xff, 0x00,              //     LOGICAL_MAXIMUM (255)
+    0x75, 0x08,                    //     REPORT_SIZE (8)
+    0x95, PPM_NUM_CHANNELS,        //     REPORT_COUNT (2)
+    0x81, 0x02,                    //     INPUT (Data,Var,Abs)
+    0xc0,                          //     END_COLLECTION
+    0xc0                           // END_COLLECTION
 };
 
 
