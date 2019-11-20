@@ -58,6 +58,7 @@ void EP1_IN_Callback(void)
   /* Set the transfer complete token to inform upper layer that the current 
   transfer has been complete */
   PrevXferComplete = 1; 
+	GPIOC->ODR ^= GPIO_Pin_13;
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

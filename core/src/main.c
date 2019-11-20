@@ -41,11 +41,12 @@ int main()
 	gpio_init();
 	//tim_init();
 	usart_init();
+	GPIOC->ODR &= ~GPIO_Pin_13;
 	
   while(1) {
 		//GPIOC->ODR ^= GPIO_Pin_15;
 		if ((PrevXferComplete) && (bDeviceState == CONFIGURED)) {
-			USB_HID_Mouse_Send(1, 0);
+			USB_HID_Mouse_Send(5, 0);
 		}
 		//printf("Hello\n");
 		//for(int i = 0; i < 1000000; i++);
