@@ -57,7 +57,7 @@
 
 #define JOYSTICK_SIZ_DEVICE_DESC               18
 #define JOYSTICK_SIZ_CONFIG_DESC               41
-#define JOYSTICK_SIZ_REPORT_DESC               52
+#define JOYSTICK_SIZ_REPORT_DESC               22
 
 #define JOYSTICK_SIZ_STRING_LANGID             4
 #define JOYSTICK_SIZ_STRING_VENDOR             38
