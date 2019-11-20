@@ -25,6 +25,40 @@ ppm_decoder_state_t ppm_current_state;
 
 __IO uint8_t PrevXferComplete = 1;
 
+int8_t ops[] = {
+	1,  1,
+	0,  1,
+	0,  1,
+	0,  1,
+	0,  1,
+	1, -1,
+	1,  0,
+	1,  1,
+	0,  1,
+ -1,  1,
+ -1,  0,
+ -1, -1,
+ -1,  0,
+ -1,  0,
+ -1, 	1,
+ -1,  0,
+ -1, -1,
+  0, -1,
+  1, -1,
+  1,  0,
+  1,  1,
+  0, -1,	
+	0, -1,
+	0, -1,
+	0, -1,
+	1, -1
+};
+
+const int ops_cnt = sizeof(ops) / 2;
+
+#define OPS_REPEAT 10
+#define SPEED 5
+
 void usb_init(void);
 void gpio_init(void);
 void tim_init(void);
@@ -44,9 +78,15 @@ int main()
 	GPIOC->ODR &= ~GPIO_Pin_13;
 	
   while(1) {
-		//GPIOC->ODR ^= GPIO_Pin_15;
-		if ((PrevXferComplete) && (bDeviceState == CONFIGURED)) {
-			USB_HID_Mouse_Send(5, 0);
+		if(bDeviceState == CONFIGURED) {
+			for(int i = 0; i < ops_cnt; i++) {
+				int x = ops[i * 2] * SPEED;
+				int y = ops[i * 2 + 1] * SPEED;
+				for(int j = 0; j < OPS_REPEAT; j++) {
+					while(!PrevXferComplete);
+					USB_HID_Mouse_Send(x, y, 1);
+				}
+			}
 		}
 		//printf("Hello\n");
 		//for(int i = 0; i < 1000000; i++);

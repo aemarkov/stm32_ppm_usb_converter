@@ -67,7 +67,7 @@ void USB_Interrupts_Config(void);
 void USB_Cable_Config (FunctionalState NewState);
 void Get_SerialNum(void);
 
-void USB_HID_Mouse_Send(int8_t dx, int8_t dy);
+void USB_HID_Mouse_Send(int8_t dx, int8_t dy, int lmb);
 
 #endif  /*__HW_CONFIG_H*/
 
