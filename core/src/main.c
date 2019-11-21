@@ -11,6 +11,8 @@
 #include "hw_config.h"
 
 #define PPM_SYNC_THRESHOLD 3000
+#define PPM_MIN 1000
+#define PPM_MAX 3000
 
 typedef enum ppm_decoder_state
 {
@@ -18,7 +20,7 @@ typedef enum ppm_decoder_state
 	PPM_STATE_RECEIVING,			// Receiving state
 } ppm_decoder_state_t;
 
-uint16_t ppm_buffer[PPM_NUM_CHANNELS];
+uint8_t ppm_buffer[PPM_NUM_CHANNELS];
 uint8_t ppm_channel_index;
 ppm_decoder_state_t ppm_current_state;
 
@@ -30,8 +32,6 @@ void tim_init(void);
 void tim_process_event(void);
 void usart_init(void);
 
-#define CH_CNT PPM_NUM_CHANNELS
-uint8_t values[CH_CNT] = { 0 };
 
 int main()
 {
@@ -41,24 +41,21 @@ int main()
 	
 	usb_init();
 	gpio_init();
-	//tim_init();
-	usart_init();
+	tim_init();
+	//usart_init();
 	GPIOC->ODR &= ~GPIO_Pin_13;
 	
   while(1) {
-		if(bDeviceState == CONFIGURED) {
+		/*if(bDeviceState == CONFIGURED) {
 
-			for(int i = 0; i < CH_CNT; i++) {
-				values[i]+=5;
+			for(int i = 0; i < PPM_NUM_CHANNELS; i++) {
+				ppm_buffer[i]+=5;
 			}
 
 			while(!PrevXferComplete);
-			PrevXferComplete = 0;
-			USB_SIL_Write(EP1_IN, values, CH_CNT);
-			SetEPTxValid(ENDP1);
+			USB_HID_Joystic_Send(ppm_buffer, PPM_NUM_CHANNELS);
 			GPIOC->ODR ^= GPIO_Pin_13;
-
-		}
+		}*/
 	}
 	return 0;
 }
@@ -142,11 +139,24 @@ void TIM2_IRQHandler(void)
 
 void ppm_send()
 {
-	//for(int i = 0; i<4; i++) {
-	//	printf("%u ", ppm_buffer[i]);
-	//}
-	//printf("\n");
-	printf("%u %u\n", ppm_buffer[0], ppm_buffer[1]);
+	/*for(int i = 0; i<4; i++) {
+		printf("%u ", ppm_buffer[i]);
+	}
+	printf("\n");*/
+	//printf("%u %u\n", ppm_buffer[0], ppm_buffer[1]);
+	if(bDeviceState == CONFIGURED && PrevXferComplete) {
+		USB_HID_Joystic_Send(ppm_buffer, PPM_NUM_CHANNELS);
+		GPIOC->ODR ^= GPIO_Pin_13;
+	}
+	//GPIOC->ODR ^= GPIO_Pin_13;
+}
+
+uint8_t value_to_byte(uint16_t value)
+{
+	if(value < PPM_MIN) value = PPM_MIN;
+	else if(value > PPM_MAX) value = PPM_MAX;
+	value -= PPM_MIN;
+	return value >> 4; // [0; 1000] -> [0; 250]
 }
 
 void ppm_finite_automate(uint16_t duration)
@@ -167,7 +177,6 @@ void ppm_finite_automate(uint16_t duration)
 				if(ppm_channel_index == PPM_NUM_CHANNELS) {
 					// All channels received
 					// All channels received, sync strobe received
-					// TODO: send
 					ppm_send();
 					ppm_channel_index = 0;
 					ppm_current_state = PPM_STATE_RECEIVING;
@@ -181,7 +190,7 @@ void ppm_finite_automate(uint16_t duration)
 			else {
 				if(ppm_channel_index < PPM_NUM_CHANNELS) {
 					// One more channel received
-					ppm_buffer[ppm_channel_index++] = duration;
+					ppm_buffer[ppm_channel_index++] = value_to_byte(duration);
 				} else {
 					// Too many channels received
 					// Looks like synchronization is failed
