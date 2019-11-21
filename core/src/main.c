@@ -10,9 +10,12 @@
 #include "main.h"
 #include "hw_config.h"
 
-#define PPM_SYNC_THRESHOLD 3000
-#define PPM_MIN 1000
-#define PPM_MAX 3000
+// PPM decoder ////////////////////////////////////////////////////////////////
+
+#define PPM_SYNC_THRESHOLD  3000
+#define PPM_MIN             1000
+#define PPM_MAX             3000
+#define PPM_BTN_THRESHOLD   1500
 
 typedef enum ppm_decoder_state
 {
@@ -20,13 +23,22 @@ typedef enum ppm_decoder_state
 	PPM_STATE_RECEIVING,			// Receiving state
 } ppm_decoder_state_t;
 
-uint16_t ppm_buffer[PPM_NUM_CHANNELS];
+uint16_t ppm_buffer[PPM_NUM_CHANNELS] = {0};
 uint8_t ppm_channel_index;
 ppm_decoder_state_t ppm_current_state;
 
+// USB ////////////////////////////////////////////////////////////////////////
+
+#define USB_BUFFER_SIZE (4 + 1)
+
 __IO uint8_t PrevXferComplete = 1;
+uint16_t usb_send_buffer[USB_BUFFER_SIZE];
+
+// UART ///////////////////////////////////////////////////////////////////////
 
 uint8_t uart_header[] = { 0xAA, 0xBB };
+
+///////////////////////////////////////////////////////////////////////////////
 
 void usb_init(void);
 void gpio_init(void);
@@ -139,12 +151,12 @@ void TIM2_IRQHandler(void)
 	}
 }
 
-void ppm_send()
+void ppm_send_usb()
 {
-	//if(bDeviceState == CONFIGURED && PrevXferComplete) {
-	//	USB_HID_Joystic_Send(ppm_buffer, PPM_NUM_CHANNELS);
-	//	GPIOC->ODR ^= GPIO_Pin_13;
-	//}
+	if(bDeviceState == CONFIGURED && PrevXferComplete) {
+		USB_HID_Joystic_Send((void*)usb_send_buffer, 4 * 2 + 1);
+		GPIOC->ODR ^= GPIO_Pin_13;
+	}
 }
 
 void ppm_send_uart()
@@ -155,12 +167,29 @@ void ppm_send_uart()
 	GPIOC->ODR ^= GPIO_Pin_13;
 }
 
-uint8_t value_to_byte(uint16_t value)
+uint16_t ppm_to_joystic(uint16_t value)
 {
 	if(value < PPM_MIN) value = PPM_MIN;
 	else if(value > PPM_MAX) value = PPM_MAX;
 	value -= PPM_MIN;
-	return value >> 4; // [0; 1000] -> [0; 250]
+	return value << 6; // [0; 1000] -> [0; 64000]
+}
+
+void write_axis(uint16_t value, uint8_t axis)
+{
+	if(axis < 4) {
+		// analog
+		usb_send_buffer[axis] = ppm_to_joystic(value);
+	} else if (axis < 12){
+		// digital
+		uint8_t btn_index = axis - 4;
+		uint8_t btn_value = value < PPM_BTN_THRESHOLD;
+		if(btn_value) {
+			usb_send_buffer[4] |= (1 << btn_index);
+		} else {
+			usb_send_buffer[4] &= ~(1 << btn_index);
+		}
+	}
 }
 
 void ppm_finite_automate(uint16_t duration)
@@ -181,8 +210,8 @@ void ppm_finite_automate(uint16_t duration)
 				if(ppm_channel_index == PPM_NUM_CHANNELS) {
 					// All channels received
 					// All channels received, sync strobe received
-					//ppm_send();
-					ppm_send_uart();
+					ppm_send_usb();
+					//ppm_send_uart();
 					ppm_channel_index = 0;
 					ppm_current_state = PPM_STATE_RECEIVING;
 				}
@@ -195,7 +224,9 @@ void ppm_finite_automate(uint16_t duration)
 			else {
 				if(ppm_channel_index < PPM_NUM_CHANNELS) {
 					// One more channel received
-					ppm_buffer[ppm_channel_index++] = duration; //value_to_byte(duration);
+					//ppm_buffer[ppm_channel_index++] = duration;
+					write_axis(duration, ppm_channel_index++);
+					//ppm_buffer[ppm_channel_index++] = value_to_byte(duration);
 				} else {
 					// Too many channels received
 					// Looks like synchronization is failed
