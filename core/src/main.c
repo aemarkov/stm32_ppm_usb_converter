@@ -20,11 +20,13 @@ typedef enum ppm_decoder_state
 	PPM_STATE_RECEIVING,			// Receiving state
 } ppm_decoder_state_t;
 
-uint8_t ppm_buffer[PPM_NUM_CHANNELS];
+uint16_t ppm_buffer[PPM_NUM_CHANNELS];
 uint8_t ppm_channel_index;
 ppm_decoder_state_t ppm_current_state;
 
 __IO uint8_t PrevXferComplete = 1;
+
+uint8_t uart_header[] = { 0xAA, 0xBB };
 
 void usb_init(void);
 void gpio_init(void);
@@ -42,7 +44,7 @@ int main()
 	usb_init();
 	gpio_init();
 	tim_init();
-	//usart_init();
+	usart_init();
 	GPIOC->ODR &= ~GPIO_Pin_13;
 	
   while(1) {
@@ -88,7 +90,7 @@ void tim_init(void)
 	
 	TIM_TimeBaseInitTypeDef tim_init = {0};
 	tim_init.TIM_CounterMode = TIM_CounterMode_Up;
-	tim_init.TIM_Prescaler = 48;
+	tim_init.TIM_Prescaler = 72;
 	tim_init.TIM_ClockDivision = TIM_CKD_DIV1;
 	tim_init.TIM_Period = 65535;
 	tim_init.TIM_RepetitionCounter = 1;
@@ -139,16 +141,18 @@ void TIM2_IRQHandler(void)
 
 void ppm_send()
 {
-	/*for(int i = 0; i<4; i++) {
-		printf("%u ", ppm_buffer[i]);
-	}
-	printf("\n");*/
-	//printf("%u %u\n", ppm_buffer[0], ppm_buffer[1]);
-	if(bDeviceState == CONFIGURED && PrevXferComplete) {
-		USB_HID_Joystic_Send(ppm_buffer, PPM_NUM_CHANNELS);
-		GPIOC->ODR ^= GPIO_Pin_13;
-	}
-	//GPIOC->ODR ^= GPIO_Pin_13;
+	//if(bDeviceState == CONFIGURED && PrevXferComplete) {
+	//	USB_HID_Joystic_Send(ppm_buffer, PPM_NUM_CHANNELS);
+	//	GPIOC->ODR ^= GPIO_Pin_13;
+	//}
+}
+
+void ppm_send_uart()
+{
+	usart_write(uart_header, sizeof(uart_header));
+	uint16_t x = 123;
+	usart_write((uint8_t*)ppm_buffer, 4 * sizeof(uint16_t));
+	GPIOC->ODR ^= GPIO_Pin_13;
 }
 
 uint8_t value_to_byte(uint16_t value)
@@ -177,7 +181,8 @@ void ppm_finite_automate(uint16_t duration)
 				if(ppm_channel_index == PPM_NUM_CHANNELS) {
 					// All channels received
 					// All channels received, sync strobe received
-					ppm_send();
+					//ppm_send();
+					ppm_send_uart();
 					ppm_channel_index = 0;
 					ppm_current_state = PPM_STATE_RECEIVING;
 				}
@@ -190,7 +195,7 @@ void ppm_finite_automate(uint16_t duration)
 			else {
 				if(ppm_channel_index < PPM_NUM_CHANNELS) {
 					// One more channel received
-					ppm_buffer[ppm_channel_index++] = value_to_byte(duration);
+					ppm_buffer[ppm_channel_index++] = duration; //value_to_byte(duration);
 				} else {
 					// Too many channels received
 					// Looks like synchronization is failed
@@ -240,4 +245,11 @@ void usart_send_byte(uint8_t byte)
 {
 	while(!USART_GetFlagStatus(USART1, USART_FLAG_TXE));
 	USART1->DR = byte;
+}
+
+void usart_write(uint8_t* buffer, uint32_t size)
+{
+	for(uint32_t i = 0; i < size; i++) {
+		usart_send_byte(buffer[i]);
+	}
 }
