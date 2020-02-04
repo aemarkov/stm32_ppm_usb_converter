@@ -9,23 +9,14 @@
 
 #include "main.h"
 #include "hw_config.h"
+#include "ppm_decoder.h"
 
 // PPM decoder ////////////////////////////////////////////////////////////////
 
-#define PPM_SYNC_THRESHOLD  3000
 #define PPM_MIN             1000
 #define PPM_MAX             3000
-#define PPM_BTN_THRESHOLD   1500
-
-typedef enum ppm_decoder_state
-{
-	PPM_STATE_START, 					// Initial unknown state
-	PPM_STATE_RECEIVING,			// Receiving state
-} ppm_decoder_state_t;
-
+#define PPM_BTN_THRESHOLD   1300
 uint16_t ppm_buffer[PPM_NUM_CHANNELS] = {0};
-uint8_t ppm_channel_index;
-ppm_decoder_state_t ppm_current_state;
 
 // USB ////////////////////////////////////////////////////////////////////////
 
@@ -46,31 +37,21 @@ void tim_init(void);
 void tim_process_event(void);
 void usart_init(void);
 
+void process_channel(uint8_t axis, uint16_t value);
+void ppm_send_usb(void);
+void ppm_send_uart(void);
+
 
 int main()
 {
-	ppm_channel_index = 0;
-	ppm_current_state = PPM_STATE_START;
-	
-	
+	ppm_decoder_init(process_channel, ppm_send_usb);		
 	usb_init();
 	gpio_init();
 	tim_init();
 	usart_init();
 	GPIOC->ODR &= ~GPIO_Pin_13;
 	
-  while(1) {
-		/*if(bDeviceState == CONFIGURED) {
-
-			for(int i = 0; i < PPM_NUM_CHANNELS; i++) {
-				ppm_buffer[i]+=5;
-			}
-
-			while(!PrevXferComplete);
-			USB_HID_Joystic_Send(ppm_buffer, PPM_NUM_CHANNELS);
-			GPIOC->ODR ^= GPIO_Pin_13;
-		}*/
-	}
+	while(1) {}
 	return 0;
 }
 
@@ -151,7 +132,7 @@ void TIM2_IRQHandler(void)
 	}
 }
 
-void ppm_send_usb()
+void ppm_send_usb(void)
 {
 	if(bDeviceState == CONFIGURED && PrevXferComplete) {
 		USB_HID_Joystic_Send((void*)usb_send_buffer, 4 * 2 + 1);
@@ -159,13 +140,13 @@ void ppm_send_usb()
 	}
 }
 
-void ppm_send_uart()
+void ppm_send_uart(void)
 {
 	usart_write(uart_header, sizeof(uart_header));
-	uint16_t x = 123;
 	usart_write((uint8_t*)ppm_buffer, 4 * sizeof(uint16_t));
 	GPIOC->ODR ^= GPIO_Pin_13;
 }
+
 
 uint16_t ppm_to_joystic(uint16_t value)
 {
@@ -175,8 +156,10 @@ uint16_t ppm_to_joystic(uint16_t value)
 	return value << 6; // [0; 1000] -> [0; 64000]
 }
 
-void write_axis(uint16_t value, uint8_t axis)
+// Process each channel
+void process_channel(uint8_t axis, uint16_t value)
 {
+	ppm_buffer[axis] = value;
 	if(axis < 4) {
 		// analog
 		usb_send_buffer[axis] = ppm_to_joystic(value);
@@ -192,57 +175,13 @@ void write_axis(uint16_t value, uint8_t axis)
 	}
 }
 
-void ppm_finite_automate(uint16_t duration)
-{
-	bool is_sync = duration > PPM_SYNC_THRESHOLD;
-	
-	switch(ppm_current_state)
-	{
-		case PPM_STATE_START:
-			// Initial unknown state
-			if(is_sync) {
-				ppm_channel_index = 0;
-				ppm_current_state = PPM_STATE_RECEIVING;
-			}
-			break;
-		case PPM_STATE_RECEIVING:
-			if(is_sync) {
-				if(ppm_channel_index == PPM_NUM_CHANNELS) {
-					// All channels received
-					// All channels received, sync strobe received
-					ppm_send_usb();
-					//ppm_send_uart();
-					ppm_channel_index = 0;
-					ppm_current_state = PPM_STATE_RECEIVING;
-				}
-				else {
-					// Not enough channels received
-					// Looks like synchronization is failed
-					ppm_current_state = PPM_STATE_START;
-				}
-			}
-			else {
-				if(ppm_channel_index < PPM_NUM_CHANNELS) {
-					// One more channel received
-					//ppm_buffer[ppm_channel_index++] = duration;
-					write_axis(duration, ppm_channel_index++);
-					//ppm_buffer[ppm_channel_index++] = value_to_byte(duration);
-				} else {
-					// Too many channels received
-					// Looks like synchronization is failed
-					ppm_current_state = PPM_STATE_START;
-				}
-			}
-			break;
-	};
-}
 
-void tim_process_event()
+void tim_process_event(void)
 {
 	GPIOC->ODR ^= GPIO_Pin_13;
 	uint16_t duration = TIM2->CCR3;
 	TIM2->CNT = 0;
-	ppm_finite_automate(duration);
+	ppm_decoder_decode(duration);
 }
 
 void usart_init(void)

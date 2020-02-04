@@ -392,6 +392,11 @@
               <FileType>1</FileType>
               <FilePath>.\core\src\retarget.c</FilePath>
             </File>
+            <File>
+              <FileName>ppm_decoder.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\core\src\ppm_decoder.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
