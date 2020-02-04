@@ -10,6 +10,7 @@
 #include "main.h"
 #include "hw_config.h"
 #include "ppm_decoder.h"
+#include "ppm_reader.h"
 
 // PPM decoder ////////////////////////////////////////////////////////////////
 
@@ -33,10 +34,9 @@ uint8_t uart_header[] = { 0xAA, 0xBB };
 
 void usb_init(void);
 void gpio_init(void);
-void tim_init(void);
-void tim_process_event(void);
 void usart_init(void);
 
+void process_impulse(uint16_t duration);
 void process_channel(uint8_t axis, uint16_t value);
 void ppm_send_usb(void);
 void ppm_send_uart(void);
@@ -47,7 +47,7 @@ int main()
 	ppm_decoder_init(process_channel, ppm_send_usb);		
 	usb_init();
 	gpio_init();
-	tim_init();
+	ppm_reader_init(process_impulse);
 	usart_init();
 	GPIOC->ODR &= ~GPIO_Pin_13;
 	
@@ -76,61 +76,7 @@ void gpio_init(void)
 	GPIO_Init(GPIOC, &gpio_init);
 }
 
-void tim_init(void)
-{
-	// Timer init
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
-	
-	TIM_TimeBaseInitTypeDef tim_init = {0};
-	tim_init.TIM_CounterMode = TIM_CounterMode_Up;
-	tim_init.TIM_Prescaler = 72;
-	tim_init.TIM_ClockDivision = TIM_CKD_DIV1;
-	tim_init.TIM_Period = 65535;
-	tim_init.TIM_RepetitionCounter = 1;
-	TIM_TimeBaseInit(TIM2, &tim_init);
-	
-	// Input capture GPIO init
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-	
-	GPIO_PinRemapConfig(GPIO_FullRemap_TIM2, ENABLE);
-	
-	GPIO_InitTypeDef gpio_init = {0};
-	gpio_init.GPIO_Mode = GPIO_Mode_IPD;
-	gpio_init.GPIO_Speed = GPIO_Speed_50MHz;
-	gpio_init.GPIO_Pin = GPIO_Pin_10;
-	//TIM_ARRPreloadConfig(TIM2, DISABLE);
-	GPIO_Init(GPIOB, &gpio_init);
-	
-	// Input capture channel init
-	TIM_ICInitTypeDef ic_init = {0};
-	ic_init.TIM_Channel = TIM_Channel_3;
-	ic_init.TIM_ICFilter = 0;
-	ic_init.TIM_ICPolarity = TIM_ICPolarity_Rising;
-	ic_init.TIM_ICPrescaler = 0;
-	ic_init.TIM_ICSelection = TIM_ICSelection_DirectTI;
-	TIM_ICInit(TIM2, &ic_init);
-	
-	// Interrupts init
-	NVIC_EnableIRQ(TIM2_IRQn);
-	TIM_ITConfig(TIM2, TIM_IT_Update | TIM_IT_CC3, ENABLE);
-	
-	// Start timer
-	TIM_Cmd(TIM2, ENABLE);
-	TIM_CCxCmd(TIM2, TIM_Channel_3, ENABLE);
-}
 
-void TIM2_IRQHandler(void)
-{
-	if (TIM_GetFlagStatus(TIM2, TIM_FLAG_Update)){
-		TIM_ClearFlag(TIM2, TIM_FLAG_Update);
-		//GPIOC->ODR ^= GPIO_Pin_13;
-	}
-	else if(TIM_GetFlagStatus(TIM2, TIM_FLAG_CC3)) {
-		TIM_ClearFlag(TIM2, TIM_FLAG_CC3);
-		tim_process_event();
-	}
-}
 
 void ppm_send_usb(void)
 {
@@ -175,12 +121,8 @@ void process_channel(uint8_t axis, uint16_t value)
 	}
 }
 
-
-void tim_process_event(void)
+void process_impulse(uint16_t duration)
 {
-	GPIOC->ODR ^= GPIO_Pin_13;
-	uint16_t duration = TIM2->CCR3;
-	TIM2->CNT = 0;
 	ppm_decoder_decode(duration);
 }
 
